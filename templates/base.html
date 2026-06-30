@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}DATA - AP - OB{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="bg-gray-50">
+    <div class="flex h-screen">
+        {% if logged_in %}
+        <!-- Sidebar -->
+        <aside class="w-64 bg-slate-900 text-white flex flex-col">
+            <div class="p-6 border-b border-slate-700">
+                <h1 class="text-xl font-bold">DATA - AP - OB</h1>
+                <p class="text-sm text-slate-400 mt-1">Inspired Space</p>
+            </div>
+            <nav class="flex-1 p-4 space-y-2">
+                <a href="{{ url_for('index') }}"
+                   class="block px-4 py-3 rounded-lg hover:bg-slate-800 transition {% if request.endpoint == 'index' %}bg-slate-800{% endif %}">
+                    <span class="font-medium">🏠 Tổng quan</span>
+                </a>
+                <a href="{{ url_for('dashboard') }}"
+                   class="block px-4 py-3 rounded-lg hover:bg-slate-800 transition {% if request.endpoint == 'dashboard' %}bg-slate-800{% endif %}">
+                    <span class="font-medium">📊 Dashboard</span>
+                </a>
+                <a href="{{ url_for('conversion') }}"
+                   class="block px-4 py-3 rounded-lg hover:bg-slate-800 transition {% if request.endpoint == 'conversion' %}bg-slate-800{% endif %}">
+                    <span class="font-medium">🔄 Tỷ Lệ Chuyển Đổi</span>
+                </a>
+                <a href="{{ url_for('install') }}"
+                   class="block px-4 py-3 rounded-lg hover:bg-slate-800 transition {% if request.endpoint in ['install', 'install_add', 'install_edit'] %}bg-slate-800{% endif %}">
+                    <span class="font-medium">🛠️ DataBase Install</span>
+                </a>
+
+                {% set cur_cat = request.view_args.get('category') if request.endpoint == 'database' else None %}
+                {% set cur_reg = request.view_args.get('region') if request.endpoint == 'database' else None %}
+                <div class="pt-4 pb-2">
+                    <p class="text-xs text-slate-500 uppercase font-semibold">Database AP (Căn hộ)</p>
+                </div>
+                <a href="{{ url_for('database', category='ap', region='mn') }}"
+                   class="block px-4 py-3 rounded-lg hover:bg-slate-800 transition {% if cur_cat == 'ap' and cur_reg == 'mn' %}bg-slate-800{% endif %}">
+                    <span class="font-medium">🏢 AP Miền Nam</span>
+                </a>
+                <a href="{{ url_for('database', category='ap', region='mt') }}"
+                   class="block px-4 py-3 rounded-lg hover:bg-slate-800 transition {% if cur_cat == 'ap' and cur_reg == 'mt' %}bg-slate-800{% endif %}">
+                    <span class="font-medium">🏢 AP Miền Trung</span>
+                </a>
+                <a href="{{ url_for('database', category='ap', region='mb') }}"
+                   class="block px-4 py-3 rounded-lg hover:bg-slate-800 transition {% if cur_cat == 'ap' and cur_reg == 'mb' %}bg-slate-800{% endif %}">
+                    <span class="font-medium">🏢 AP Miền Bắc</span>
+                </a>
+
+                <div class="pt-4 pb-2">
+                    <p class="text-xs text-slate-500 uppercase font-semibold">Database OB (Văn phòng)</p>
+                </div>
+                <a href="{{ url_for('database', category='ob', region='mn') }}"
+                   class="block px-4 py-3 rounded-lg hover:bg-slate-800 transition {% if cur_cat == 'ob' and cur_reg == 'mn' %}bg-slate-800{% endif %}">
+                    <span class="font-medium">🏬 OB Miền Nam</span>
+                </a>
+                <a href="{{ url_for('database', category='ob', region='mt') }}"
+                   class="block px-4 py-3 rounded-lg hover:bg-slate-800 transition {% if cur_cat == 'ob' and cur_reg == 'mt' %}bg-slate-800{% endif %}">
+                    <span class="font-medium">🏬 OB Miền Trung</span>
+                </a>
+                <a href="{{ url_for('database', category='ob', region='mb') }}"
+                   class="block px-4 py-3 rounded-lg hover:bg-slate-800 transition {% if cur_cat == 'ob' and cur_reg == 'mb' %}bg-slate-800{% endif %}">
+                    <span class="font-medium">🏬 OB Miền Bắc</span>
+                </a>
+
+                <div class="pt-4 pb-2">
+                    <p class="text-xs text-slate-500 uppercase font-semibold">Data</p>
+                </div>
+                <a href="{{ url_for('import_export') }}"
+                   class="block px-4 py-3 rounded-lg hover:bg-slate-800 transition {% if request.endpoint == 'import_export' %}bg-slate-800{% endif %}">
+                    <span class="font-medium">📥 Import / Export</span>
+                </a>
+            </nav>
+        </aside>
+        {% endif %}
+
+        <!-- Main content -->
+        <main class="flex-1 overflow-auto">
+            <header class="bg-white border-b border-slate-200 p-4 flex items-center justify-between">
+                <div>
+                    {% if logged_in %}
+                        <p class="text-sm text-slate-500">Xin chào, {{ current_user }}</p>
+                    {% else %}
+                        <p class="text-sm text-slate-500">Vui lòng đăng nhập để tiếp tục</p>
+                    {% endif %}
+                </div>
+                <div></div>
+            </header>
+
+            <!-- Flash messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="p-4 space-y-2">
+                        {% for category, message in messages %}
+                            <div class="px-4 py-3 rounded-lg {% if category == 'success' %}bg-green-100 text-green-800{% elif category == 'error' %}bg-red-100 text-red-800{% else %}bg-blue-100 text-blue-800{% endif %}">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <div class="p-8">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

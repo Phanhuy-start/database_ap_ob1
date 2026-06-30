@@ -1,0 +1,348 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - DATA AP OB{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex items-start justify-between flex-wrap gap-4">
+    <div>
+        <h1 class="text-3xl font-bold text-gray-800">Dashboard</h1>
+        <p class="text-gray-600 mt-2">Thống kê và phân tích dữ liệu</p>
+    </div>
+    <form method="GET" class="flex items-center gap-2">
+        <label class="text-sm font-medium text-gray-700">Loại:</label>
+        <select name="category" onchange="this.form.submit()"
+                class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+            <option value="" {% if not category %}selected{% endif %}>Tất cả (AP + OB)</option>
+            <option value="AP" {% if category == 'AP' %}selected{% endif %}>AP — Căn hộ</option>
+            <option value="OB" {% if category == 'OB' %}selected{% endif %}>OB — Văn phòng</option>
+        </select>
+    </form>
+</div>
+
+<!-- Screen targets: P6000 (AP) & P1000 (OB) -->
+<div class="bg-white rounded-xl shadow p-6 mb-6">
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-bold text-gray-800"><span id="p6000Title">P6000</span> — Tiến độ màn hình (AP)</h2>
+        <span class="text-xs text-gray-500">Đã thực hiện = tổng màn các giai đoạn Plan B → Done (không tính Research)</span>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="text-center"><canvas id="apMB" height="180"></canvas><p id="apMBcap" class="text-xs mt-2"></p></div>
+        <div class="text-center"><canvas id="apMN" height="180"></canvas><p id="apMNcap" class="text-xs mt-2"></p></div>
+        <div class="text-center"><canvas id="apSUM" height="180"></canvas><p id="apSUMcap" class="text-xs mt-2"></p></div>
+    </div>
+</div>
+
+<div class="bg-white rounded-xl shadow p-6 mb-6">
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-bold text-gray-800"><span id="p1000Title">P1000</span> — Tiến độ màn hình (OB)</h2>
+        <span class="text-xs text-gray-500">Đã thực hiện = tổng màn các giai đoạn Plan B → Done (không tính Research)</span>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="text-center"><canvas id="obMB" height="180"></canvas><p id="obMBcap" class="text-xs mt-2"></p></div>
+        <div class="text-center"><canvas id="obMN" height="180"></canvas><p id="obMNcap" class="text-xs mt-2"></p></div>
+        <div class="text-center"><canvas id="obSUM" height="180"></canvas><p id="obSUMcap" class="text-xs mt-2"></p></div>
+    </div>
+</div>
+
+<!-- Weekly Growth: screens -->
+<div class="bg-white rounded-xl shadow p-6 mb-6">
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-bold text-gray-800">Tỉ lệ tăng trưởng theo tuần — Màn hình</h2>
+        <span class="text-xs text-gray-500">Trục tung: số lượng màn hình · gồm AP + OB</span>
+    </div>
+    <canvas id="weeklyChart" height="90"></canvas>
+    <p id="weeklyHint" class="text-xs text-gray-400 mt-3 hidden">
+        Hiện mới có dữ liệu của tuần này. Mỗi tuần hệ thống sẽ tự ghi nhận thêm 1 điểm để tạo đường tăng trưởng.
+    </p>
+</div>
+
+<!-- Weekly Growth: blocks -->
+<div class="bg-white rounded-xl shadow p-6 mb-6">
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-bold text-gray-800">Tỉ lệ tăng trưởng theo tuần — Blocks</h2>
+        <span class="text-xs text-gray-500">Trục tung: số lượng block · gồm AP + OB</span>
+    </div>
+    <canvas id="weeklyBlockChart" height="90"></canvas>
+</div>
+
+<!-- Person Workload Table -->
+<div class="bg-white rounded-xl shadow p-6 mb-6">
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-bold text-gray-800">Khối lượng công việc theo người</h2>
+        <span class="text-xs text-gray-500">Số lượng dự án theo từng giai đoạn</span>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+            <thead class="bg-gray-50 text-gray-600">
+                <tr>
+                    <th class="px-4 py-3 text-left font-semibold uppercase text-xs tracking-wider">Cá nhân phụ trách</th>
+                    <th class="px-4 py-3 text-left font-semibold uppercase text-xs tracking-wider">Team</th>
+                    <th class="px-4 py-3 text-center font-semibold uppercase text-xs tracking-wider">Research</th>
+                    <th class="px-4 py-3 text-center font-semibold uppercase text-xs tracking-wider">Plan B</th>
+                    <th class="px-4 py-3 text-center font-semibold uppercase text-xs tracking-wider">Plan A</th>
+                    <th class="px-4 py-3 text-center font-semibold uppercase text-xs tracking-wider">Deal</th>
+                    <th class="px-4 py-3 text-center font-semibold uppercase text-xs tracking-wider">Done</th>
+                    <th class="px-4 py-3 text-center font-semibold uppercase text-xs tracking-wider">Tổng</th>
+                    <th class="px-4 py-3 text-center font-semibold uppercase text-xs tracking-wider bg-blue-50">Target AP<br><span class="normal-case text-[10px] text-gray-400">đạt / mục tiêu (màn)</span></th>
+                    <th class="px-4 py-3 text-center font-semibold uppercase text-xs tracking-wider bg-teal-50">Target OB<br><span class="normal-case text-[10px] text-gray-400">đạt / mục tiêu (màn)</span></th>
+                    <th class="px-4 py-3 text-left font-semibold uppercase text-xs tracking-wider w-44">Tiến độ màn hình AP</th>
+                    <th class="px-4 py-3 text-left font-semibold uppercase text-xs tracking-wider w-44">Tiến độ màn hình OB</th>
+                </tr>
+            </thead>
+            <tbody id="personTableBody" class="divide-y divide-gray-100">
+                <tr><td colspan="12" class="px-4 py-8 text-center text-gray-400">Đang tải...</td></tr>
+            </tbody>
+            <tfoot class="bg-gray-50 font-semibold text-gray-800">
+                <tr id="personTableFoot"></tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+
+<!-- Classification detailed: AP & OB tách riêng -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    <div class="bg-white rounded-xl shadow p-6">
+        <h2 class="text-lg font-bold text-gray-800 mb-1">Phân loại chi tiết — AP (Căn hộ)</h2>
+        <p class="text-xs text-gray-500 mb-4">Research → Done · gồm cả 3 miền (Bắc + Trung + Nam)</p>
+        <canvas id="classChartAP" height="140"></canvas>
+    </div>
+    <div class="bg-white rounded-xl shadow p-6">
+        <h2 class="text-lg font-bold text-gray-800 mb-1">Phân loại chi tiết — OB (Văn phòng)</h2>
+        <p class="text-xs text-gray-500 mb-4">Research → Done · gồm cả 3 miền (Bắc + Trung + Nam)</p>
+        <canvas id="classChartOB" height="140"></canvas>
+    </div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    <div class="bg-white rounded-xl shadow p-6">
+        <h2 class="text-lg font-bold text-gray-800 mb-1">Gộp A / B / C — AP (Căn hộ)</h2>
+        <p class="text-xs text-gray-500 mb-2">A± → A · B± → B · C± → C · Research → Done · cả 3 miền</p>
+        <canvas id="classGroupAP" height="120"></canvas>
+    </div>
+    <div class="bg-white rounded-xl shadow p-6">
+        <h2 class="text-lg font-bold text-gray-800 mb-1">Gộp A / B / C — OB (Văn phòng)</h2>
+        <p class="text-xs text-gray-500 mb-2">A± → A · B± → B · C± → C · Research → Done · cả 3 miền</p>
+        <canvas id="classGroupOB" height="120"></canvas>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<script>
+Chart.register(ChartDataLabels);
+Chart.defaults.set('plugins.datalabels', { color: '#374151', font: { weight: 'bold' } });
+
+function progressColor(pct) {
+    if (pct >= 75) return '#10b981';
+    if (pct >= 50) return '#3b82f6';
+    if (pct >= 25) return '#f59e0b';
+    return '#ef4444';
+}
+
+fetch('/api/stats?category={{ category }}')
+    .then(response => response.json())
+    .then(data => {
+        // ---- Screen target donuts (P6000 / P1000) ----
+        function screenDonut(canvasId, capId, title, done, target) {
+            const filled = Math.min(done, target);          // slice capped at target
+            const remaining = Math.max(0, target - done);
+            const pctDone = target ? (done / target * 100) : 0;
+            const pctRemain = target ? (remaining / target * 100) : 0;
+            new Chart(document.getElementById(canvasId), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Đã thực hiện', 'Còn lại'],
+                    datasets: [{
+                        data: [filled, remaining],
+                        backgroundColor: ['#3b82f6', '#e5e7eb'],
+                        borderWidth: 0,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    cutout: '60%',
+                    plugins: {
+                        legend: { position: 'bottom', labels: { font: { size: 11 } } },
+                        title: { display: true, text: title, font: { size: 14, weight: 'bold' } },
+                        tooltip: { callbacks: { label: c => `${c.label}: ${c.raw} màn` } },
+                        datalabels: {
+                            color: ctx => ctx.dataIndex === 0 ? '#fff' : '#6b7280',
+                            font: { weight: 'bold', size: 12 },
+                            formatter: v => v ? v : ''
+                        }
+                    }
+                }
+            });
+            document.getElementById(capId).innerHTML =
+                `<span class="text-blue-600 font-semibold">Đã: ${done} màn (${pctDone.toFixed(1)}%)</span> · ` +
+                `<span class="text-gray-500">Còn lại: ${remaining} màn (${pctRemain.toFixed(1)}%)</span><br>` +
+                `<span class="text-gray-400">Mục tiêu: ${target} màn</span>`;
+        }
+
+        const sp = data.screen_progress;
+        if (sp) {
+            document.getElementById('p6000Title').textContent = sp.AP.name;
+            screenDonut('apMB', 'apMBcap', 'Miền Bắc', sp.AP.MB.done, sp.AP.MB.target);
+            screenDonut('apMN', 'apMNcap', 'Miền Nam + Miền Trung', sp.AP.MN.done, sp.AP.MN.target);
+            screenDonut('apSUM', 'apSUMcap', 'Tổng (cả nước)', sp.AP.SUM.done, sp.AP.SUM.target);
+
+            document.getElementById('p1000Title').textContent = sp.OB.name;
+            screenDonut('obMB', 'obMBcap', 'Miền Bắc', sp.OB.MB.done, sp.OB.MB.target);
+            screenDonut('obMN', 'obMNcap', 'Miền Nam + Miền Trung', sp.OB.MN.done, sp.OB.MN.target);
+            screenDonut('obSUM', 'obSUMcap', 'Tổng (cả nước)', sp.OB.SUM.done, sp.OB.SUM.target);
+        }
+
+        // ---- Weekly growth line charts (screens + blocks, AP + OB) ----
+        const wk = data.weekly_growth;
+        if (wk.labels.length <= 1) document.getElementById('weeklyHint').classList.remove('hidden');
+
+        function weeklyLine(canvasId, suffix, yLabel) {
+            const series = [
+                { label: 'Plan B', key: 'plan_b', color: '#f97316' },
+                { label: 'Plan A', key: 'plan_a', color: '#f59e0b' },
+                { label: 'Deal', key: 'deal', color: '#3b82f6' },
+                { label: 'Done', key: 'done', color: '#10b981' },
+            ];
+            new Chart(document.getElementById(canvasId), {
+                type: 'line',
+                data: {
+                    labels: wk.labels,
+                    datasets: series.map(s => ({
+                        label: s.label,
+                        data: wk[s.key + suffix],
+                        borderColor: s.color,
+                        backgroundColor: s.color,
+                        tension: 0.3,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        borderWidth: 2,
+                        fill: false
+                    }))
+                },
+                options: {
+                    responsive: true,
+                    interaction: { mode: 'index', intersect: false },
+                    scales: {
+                        y: { beginAtZero: true, title: { display: true, text: yLabel } },
+                        x: { title: { display: true, text: 'Tuần' } }
+                    },
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        datalabels: { align: 'top', anchor: 'end', font: { size: 10, weight: 'bold' } }
+                    }
+                }
+            });
+        }
+        weeklyLine('weeklyChart', '', 'Số lượng màn hình');
+        weeklyLine('weeklyBlockChart', '_blocks', 'Số lượng block');
+
+        // ---- Person workload table ----
+        const stages = data.funnel_stages;
+        const tbody = document.getElementById('personTableBody');
+        tbody.innerHTML = '';
+        const totals = { Research: 0, 'Plan B': 0, 'Plan A': 0, Deal: 0, Done: 0, total: 0,
+                         ap: 0, ob: 0, tgtAp: 0, tgtOb: 0 };
+
+        function progressBar(pct) {
+            const col = progressColor(pct);
+            return `
+                <div class="flex items-center gap-2">
+                    <div class="flex-1 bg-gray-100 rounded-full h-2.5 overflow-hidden">
+                        <div class="h-2.5 rounded-full" style="width:${Math.min(pct,100)}%;background:${col}"></div>
+                    </div>
+                    <span class="text-xs font-semibold w-12 text-right" style="color:${col}">${pct}%</span>
+                </div>`;
+        }
+
+        data.person_progress.forEach(p => {
+            const cells = stages.map(st => {
+                totals[st] += p.stages[st];
+                const v = p.stages[st];
+                return `<td class="px-4 py-3 text-center ${v ? 'text-gray-800' : 'text-gray-300'}">${v}</td>`;
+            }).join('');
+            totals.total += p.total;
+            totals.ap += p.ap_screens; totals.ob += p.ob_screens;
+            totals.tgtAp += p.target_ap; totals.tgtOb += p.target_ob;
+            tbody.insertAdjacentHTML('beforeend', `
+                <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-3 font-medium text-gray-900">${p.person}</td>
+                    <td class="px-4 py-3 text-gray-600">${p.team}</td>
+                    ${cells}
+                    <td class="px-4 py-3 text-center font-bold text-gray-900">${p.total}</td>
+                    <td class="px-4 py-3 text-center bg-blue-50/40"><span class="font-semibold text-blue-700">${p.ap_screens}</span> <span class="text-gray-400">/ ${p.target_ap}</span></td>
+                    <td class="px-4 py-3 text-center bg-teal-50/40"><span class="font-semibold text-teal-700">${p.ob_screens}</span> <span class="text-gray-400">/ ${p.target_ob}</span></td>
+                    <td class="px-4 py-3">${progressBar(p.progress_ap)}</td>
+                    <td class="px-4 py-3">${progressBar(p.progress_ob)}</td>
+                </tr>`);
+        });
+
+        const apPctTotal = totals.tgtAp ? Math.round(totals.ap / totals.tgtAp * 1000) / 10 : 0;
+        const obPctTotal = totals.tgtOb ? Math.round(totals.ob / totals.tgtOb * 1000) / 10 : 0;
+        document.getElementById('personTableFoot').innerHTML = `
+            <td class="px-4 py-3">Tổng cộng</td>
+            <td class="px-4 py-3"></td>
+            ${stages.map(st => `<td class="px-4 py-3 text-center">${totals[st]}</td>`).join('')}
+            <td class="px-4 py-3 text-center">${totals.total}</td>
+            <td class="px-4 py-3 text-center text-blue-700">${totals.ap} / ${Math.round(totals.tgtAp)}</td>
+            <td class="px-4 py-3 text-center text-teal-700">${totals.ob} / ${Math.round(totals.tgtOb)}</td>
+            <td class="px-4 py-3 text-xs text-blue-700">Toàn đội: ${apPctTotal}%</td>
+            <td class="px-4 py-3 text-xs text-teal-700">Toàn đội: ${obPctTotal}%</td>`;
+
+        // ---- Classification detailed: AP & OB tách riêng (all-blue shades) ----
+        const cd = data.classification_detail || { labels: [], AP: [], OB: [] };
+        const blueRamp = ['#bfdbfe', '#93c5fd', '#60a5fa', '#3b82f6', '#2563eb', '#1d4ed8', '#1e3a8a'];
+        function classBar(canvasId, arr) {
+            new Chart(document.getElementById(canvasId), {
+                type: 'bar',
+                data: {
+                    labels: cd.labels,
+                    datasets: [{
+                        label: 'Số dự án',
+                        data: arr,
+                        backgroundColor: cd.labels.map((_, i) => blueRamp[i % blueRamp.length])
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: { y: { beginAtZero: true } },
+                    plugins: {
+                        legend: { display: false },
+                        datalabels: { anchor: 'end', align: 'top', display: ctx => ctx.dataset.data[ctx.dataIndex] > 0 }
+                    }
+                }
+            });
+        }
+        classBar('classChartAP', cd.AP);
+        classBar('classChartOB', cd.OB);
+
+        // ---- Classification grouped A/B/C, one pie per category ----
+        const cg = data.classification_grouped || { labels: ['A', 'B', 'C'], AP: [0, 0, 0], OB: [0, 0, 0] };
+        function abcPie(canvasId, arr) {
+            new Chart(document.getElementById(canvasId), {
+                type: 'pie',
+                data: {
+                    labels: cg.labels,
+                    datasets: [{ data: arr, backgroundColor: ['#10b981', '#f59e0b', '#ef4444'] }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        datalabels: {
+                            color: '#fff', font: { weight: 'bold', size: 13 },
+                            formatter: (v, ctx) => {
+                                const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                                const pct = total ? (v / total * 100).toFixed(1) : 0;
+                                return v ? `${ctx.chart.data.labels[ctx.dataIndex]}: ${v} (${pct}%)` : '';
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        abcPie('classGroupAP', cg.AP);
+        abcPie('classGroupOB', cg.OB);
+    });
+</script>
+{% endblock %}
